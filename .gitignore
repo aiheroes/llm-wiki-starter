@@ -1,0 +1,27 @@
+# Secrets never go in git
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.pfx
+*.p12
+*.kdbx
+id_rsa*
+id_ed25519*
+secrets/
+keys/
+private/
+
+# Personal Claude Code settings
+.claude/settings.local.json
+CLAUDE.local.md
+
+# Python
+__pycache__/
+.venv/
+
+# OS and editors
+.DS_Store
+Thumbs.db
+.obsidian/workspace*.json
