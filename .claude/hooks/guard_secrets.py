@@ -116,14 +116,22 @@ def main():
                 block(f"Blocked by guard_secrets: the command touches '{w}' (pattern '{hit}'). "
                       "Use an environment variable or a secret manager instead of reading the file.")
 
-    new_text = "\n".join(v for k, v in ti.items() if k in ("content", "new_string", "new_source") and isinstance(v, str))
+    texts = [v for k, v in ti.items() if k in ("content", "new_string", "new_source") and isinstance(v, str)]
+    texts += [e.get("new_string", "") for e in ti.get("edits", []) if isinstance(e, dict)]
+    new_text = "\n".join(t for t in texts if t)
     if new_text:
         try:
-            from scan_secrets import scan_text
-        except ImportError:
-            scan_text = None
-        if scan_text:
-            hits = scan_text(new_text, ti.get("file_path", "<edit>"))
+            from scan_secrets import scan_text, is_wiki_path
+        except ImportError:  # missing or outdated tools/scan_secrets.py: say so, never skip the check silently
+            print("guard_secrets: tools/scan_secrets.py is missing or outdated; the text to write was NOT checked "
+                  "for secrets. Copy the current tools/ folder from the starter kit.", file=sys.stderr)
+            sys.exit(1)
+        else:
+            # Pages under wiki/ in this project get the strict check: a bare 32, 48 or 64 character hex value is a key.
+            target = norm(ti.get("file_path", ""))
+            root = norm(PROJECT).rstrip("/") + "/"
+            rel = target[len(root):] if target.startswith(root) else target
+            hits = scan_text(new_text, ti.get("file_path", "<edit>"), strict=is_wiki_path(rel))
             if hits:
                 _, line, rule, masked = hits[0]
                 block(f"Blocked by guard_secrets: the text to write contains a possible {rule} ({masked}, line {line}). "

@@ -10,7 +10,7 @@ What Claude can read, can end up in its context, in a log, in a commit message o
 | 2. `.gitignore` | Files that must exist locally never get committed | `.gitignore` in every repo: `.env`, `*.pem`, `*.key`, `keys/`, `secrets/` |
 | 3. Environment variables | Code reads `os.environ["SIGNING_KEY_PATH"]`, never a literal; build scripts get secrets from the environment or the vault at build time | Build scripts, CI |
 | 4. Claude Code permissions | `deny` rules stop the Read, Edit and Write tools on secret paths | `.claude/settings.json` (shared) or `~/.claude/settings.json` (everywhere) |
-| 5. A hook as safety net | Blocks any tool call, including Bash and PowerShell, that touches a protected path, and blocks writing text that looks like a key | `.claude/hooks/guard_secrets.py` |
+| 5. A hook as safety net | Blocks any tool call, including Bash and PowerShell, that touches a protected path, and blocks writing text that looks like a key. On wiki pages it is strict: any bare 32, 48 or 64 character hex value counts as a key | `.claude/hooks/guard_secrets.py` |
 
 Plus a pre-commit check as the last line: `python tools/scan_secrets.py --staged`.
 
@@ -28,7 +28,7 @@ A deny rule such as `Read(**/.env)` stops Claude's Read tool. It does not stop `
    printf '#!/bin/sh\npython tools/scan_secrets.py --staged\n' > .git/hooks/pre-commit
    ```
 
-4. Test it. In Claude Code, ask it to read a dummy `.env`, to `cat` it, and to write a fake key into a page. All three should be blocked.
+4. Test it. In Claude Code, ask it to read a dummy `.env`, to `cat` it, and to write a fake key into a wiki page. All three should be blocked. Claude often refuses the third on its own because of the rule in `CLAUDE.md`; insist that it is a test key to see the hook do its job.
 
 ## What never goes in the wiki
 

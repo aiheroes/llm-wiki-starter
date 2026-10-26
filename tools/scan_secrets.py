@@ -47,13 +47,26 @@ def mask(s):
     return s[:4] + "..." + s[-2:] if len(s) > 10 else "..."
 
 
-def scan_text(text, name="<text>"):
+# Strict mode, for wiki pages: a bare 128-, 192- or 256-bit hex value is treated as a key even without a key word
+# nearby. In code that would flag hashes and test vectors; in a wiki it should never appear. A git commit (40 hex)
+# does not match. A checksum you do want on a page gets `secret-scan: ignore` on its line.
+STRICT_PATTERNS = PATTERNS + [
+    ("bare hex key", re.compile(r"(?<![0-9a-fA-F])(?:[0-9a-fA-F]{32}|[0-9a-fA-F]{48}|[0-9a-fA-F]{64})(?![0-9a-fA-F])")),
+]
+
+
+def is_wiki_path(path):
+    """True for files under a wiki/ folder, which get the strict checks."""
+    return "wiki" in [p for p in path.replace("\\", "/").lower().split("/")[:-1]]
+
+
+def scan_text(text, name="<text>", strict=False):
     """Return a list of (name, line_number, rule, masked_match)."""
     found = []
     for n, line in enumerate(text.splitlines(), 1):
         if IGNORE in line:
             continue
-        for rule, rx in PATTERNS:
+        for rule, rx in (STRICT_PATTERNS if strict else PATTERNS):
             m = rx.search(line)
             if m:
                 found.append((name, n, rule, mask(m.group(0))))
@@ -61,12 +74,12 @@ def scan_text(text, name="<text>"):
     return found
 
 
-def scan_file(path):
+def scan_file(path, strict=None):
     if os.path.splitext(path)[1].lower() not in TEXT_EXT:
         return []
     try:
         with open(path, encoding="utf-8", errors="replace") as f:
-            return scan_text(f.read(), path)
+            return scan_text(f.read(), path, is_wiki_path(path) if strict is None else strict)
     except OSError:
         return []
 
